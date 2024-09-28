@@ -59,6 +59,7 @@ class PoseEstimator(Node):
 
     def depth_info(self, msg): #update received depth image
         self.depth_img = bridge.imgmsg_to_cv2(msg, "16UC1")
+        cv2.imshow("Depth", self.depth_img)
 
     #--------------------Estimate pose--------------------
     def find_pose(self, msg: Detection2D):
@@ -88,13 +89,13 @@ class PoseEstimator(Node):
                 perimeter = cv2.arcLength(cont, True) #get shape perimeter
                 approx = cv2.approxPolyDP(cont, 0.02 * perimeter, True) #approximate what shape it is
                 print("Wall has " + str(len(approx)) + " points with an area of " + str(area))
-        """
+
         for point in approx:
             p = point[0]
             x = p[0]
             y = p[1]
-            print(self.findPixelCoords(x, y))
-        """
+            print(self.findPixelCoords(x, y, depth))
+
         cv2.imshow("Virtual Wall", contouredImg)
         cv2.imshow("Depth", depth)
         cv2.waitKey(1)
@@ -123,16 +124,17 @@ class PoseEstimator(Node):
         print("Node farted with an intensity of", str(intensity), "kiloFarts")
 
 
-    """def findPixelCoords(self, x: int, y: int) -> Vector3:
+    def findPixelCoords(self, x: int, y: int, d: Image) -> Vector3:
         invFx = 1/self.Fx
         invFy = 1/self.Fy
 
         coords: Vector3 = Vector3()
-        coords.z = self.depth_img[x][y] * 0.001
+        coords.z = d[y][x] * 0.001
+        print(coords.z)
         coords.x = (x - self.Cx) * coords.z * invFx
         coords.y = (y - self.Cy) * coords.z * invFy
 
-        return coords"""
+        return coords
         
 
 
