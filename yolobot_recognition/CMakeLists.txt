@@ -35,6 +35,7 @@ install(
 
 install(PROGRAMS
   scripts/ros_recognition_yolo.py
+  scripts/workspace_pose_est.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

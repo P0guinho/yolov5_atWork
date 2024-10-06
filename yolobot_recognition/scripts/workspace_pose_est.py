@@ -16,17 +16,20 @@ class PoseEstimator(Node):
     #--------------------Initialize--------------------
     def __init__(self):
         super().__init__('workspace_pose_estimator')
-
-        self.cam_img: Image
-        self.depth_img: Image
+        
+        self.cam_img: Image = bridge.cv2_to_imgmsg(cv2.imread('thor.png')) #prevents this stupid code from trying to use a variable with no value
+        self.depth_img: Image = bridge.cv2_to_imgmsg(cv2.imread('luna_depth.png'))
 
         self.canny_thre1: int = 30
-        self.canny_thre2: int = 100
+        self.canny_thre2: int = 50
 
-        self.Fx: float
-        self.Fy: float
-        self.Cx: float
-        self.Cy: float
+        self.Fx: float = 1.0
+        self.Fy: float = 1.0
+        self.Cx: float = 1.0
+        self.Cy: float = 1.0
+
+        self.cam_rot: float = 15 #xx is the rotation in the robot, in degrees
+        self.dist_to_mod: float = 25 #vertical distance from the pivot of the cam to the mod, in mm. xx when in the robot
 
         self.image_sub = self.create_subscription(Image,
                                                    '/camera/camera/color/image_raw',
@@ -51,6 +54,7 @@ class PoseEstimator(Node):
         self.Fy = msg.k[4]
         self.Cx = msg.k[2]
         self.Cy = msg.k[5]
+
         self.fart(1000)
         self.destroy_subscription(self.depth_info_sub)
 
@@ -59,17 +63,17 @@ class PoseEstimator(Node):
 
     def depth_info(self, msg): #update received depth image
         self.depth_img = bridge.imgmsg_to_cv2(msg, "16UC1")
-        cv2.imshow("Depth", self.depth_img)
 
     #--------------------Estimate pose--------------------
     def find_pose(self, msg: Detection2D):
         imgC = self.cropIMG(self.cam_img, msg.bbox) #cropped color img
         imgD = self.cropIMG(self.depth_img, msg.bbox) #cropped depth img
+        box = msg.bbox
 
         if msg.id == "virt_wall":
-            self.find_virtWall_pose(imgC, imgD)
+            self.find_virtWall_pose(imgC, imgD, box)
 
-    def find_virtWall_pose(self, color: Image, depth: Image):
+    def find_virtWall_pose(self, color: Image, depth: Image, box: BoundingBox2D):
         contouredImg = color.copy()
         color = cv2.GaussianBlur(color, (7, 7), 1) #blur img
         color = cv2.cvtColor(color, cv2.COLOR_BGR2GRAY) #convert img to grayscale
@@ -80,6 +84,7 @@ class PoseEstimator(Node):
         color = cv2.dilate(color, dilKernel) #dilate img
 
         contours, hierarchy = cv2.findContours(color, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE) #get contours
+        approx = [[[0, 0]]] #prevent getting an error that code tries to iterate over an empty approx
         for cont in contours:
             area = cv2.contourArea(cont)
 
@@ -92,47 +97,62 @@ class PoseEstimator(Node):
 
         for point in approx:
             p = point[0]
-            x = p[0]
-            y = p[1]
-            print(self.findPixelCoords(x, y, depth))
+            pixel_pos: Pose2D = Pose2D
+            pixel_pos.x = p[0]
+            pixel_pos.y = p[1]
+            pixel_pos.theta = 0.0
+            print("x:", pixel_pos.x, "y:", pixel_pos.y)
+
+            pixel_pos = self.uncropIMG(box, pixel_pos)
+
+            x = pixel_pos.x
+            y = pixel_pos.y
+            print(self.findPixelCoords(x, y, self.depth_img))
 
         cv2.imshow("Virtual Wall", contouredImg)
-        cv2.imshow("Depth", depth)
         cv2.waitKey(1)
 
     #--------------------Utils--------------------
     def cropIMG(self, img: Image, bbox: BoundingBox2D):
         box_center = bbox.center.position
 
-        corner1 = Pose2D()
-        corner1.x = float(box_center.x - (bbox.size_x / 2))
-        corner1.y = float(box_center.y - (bbox.size_y / 2))
-        corner1.theta = 0.0
+        corner1 = [0, 0]
+        corner1[0] = float(box_center.x - (bbox.size_x / 2))
+        corner1[1] = float(box_center.y - (bbox.size_y / 2))
 
-        corner2 = Pose2D()
-        corner2.x = float(box_center.x + (bbox.size_x / 2))
-        corner2.y = float(box_center.y + (bbox.size_y / 2))
-        corner2.theta = 0.0
+        corner2 = [0, 0]
+        corner2[0] = float(box_center.x + (bbox.size_x / 2))
+        corner2[1] = float(box_center.y + (bbox.size_y / 2))
 
         #In slicing an image, x and y are flipped
-        i = img[int(corner1.y):int(corner2.y),
-                int(corner1.x):int(corner2.x)].copy()
+        i = img[int(corner1[1]):int(corner2[1]),
+                int(corner1[0]):int(corner2[0])].copy()
 
         return i
     
-    def fart(self, intensity: int):
+    def uncropIMG(self, box: BoundingBox2D, pixel: Pose2D) -> Pose2D: #Take pixel pos in cropped img and transform into pos in uncropped img
+        new_pos: Pose2D = Pose2D
+        new_pos.x = int((box.center.position.x - (box.size_x / 2)) + pixel.x)
+        new_pos.y = int((box.center.position.y - (box.size_y / 2)) + pixel.y)
+        new_pos.theta = 0.0
+        return new_pos
+
+    def fart(self, intensity: int) -> None:
         print("Node farted with an intensity of", str(intensity), "kiloFarts")
 
 
     def findPixelCoords(self, x: int, y: int, d: Image) -> Vector3:
+        coords: Vector3 = Vector3()
+
         invFx = 1/self.Fx
         invFy = 1/self.Fy
 
         coords: Vector3 = Vector3()
-        coords.z = d[y][x] * 0.001
-        print(coords.z)
-        coords.x = (x - self.Cx) * coords.z * invFx
-        coords.y = (y - self.Cy) * coords.z * invFy
+        coords.x = d[y][x] * 0.001
+        coords.y = ((x - 320) * coords.x * invFx) + 0.032 #320 is the width of the img divided by 2 (aka cx);
+        #                                                  0.032 is the distance between the depth module and the center of the cam
+        coords.z = (y - self.Cy) * coords.x * invFy
+        
 
         return coords
         
@@ -143,8 +163,8 @@ class PoseEstimator(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    pose_estimatior = PoseEstimator()
-    rclpy.spin(pose_estimatior)
+    pose_estimator = PoseEstimator()
+    rclpy.spin(pose_estimator)
     rclpy.shutdown()
 
 
