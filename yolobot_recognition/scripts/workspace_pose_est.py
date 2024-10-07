@@ -3,8 +3,10 @@ from rclpy.node import Node
 
 from vision_msgs.msg import Detection2D, BoundingBox2D
 from sensor_msgs.msg import Image, CameraInfo
-from geometry_msgs.msg import Pose2D, Vector3
+from geometry_msgs.msg import Pose2D, Point
 from cv_bridge import CvBridge, CvBridgeError
+
+from custom_msgs.msg import Fourpoints
 
 import cv2
 import numpy as np
@@ -47,6 +49,12 @@ class PoseEstimator(Node):
                                                    'yolo/workspace_detection',
                                                    self.find_pose,
                                                    10)
+        
+        self.virtWall_pub = self.create_publisher(
+            Fourpoints,
+            "yolo/virtWall_estimation_pose",
+            10
+        )
 
     #--------------------Receive info--------------------
     def receive_cam_coefs(self, msg: CameraInfo):
@@ -95,6 +103,10 @@ class PoseEstimator(Node):
                 approx = cv2.approxPolyDP(cont, 0.02 * perimeter, True) #approximate what shape it is
                 print("Wall has " + str(len(approx)) + " points with an area of " + str(area))
 
+        msg: Fourpoints = Fourpoints()
+        msg.name = 0
+        corner_pos = []
+        
         for point in approx:
             p = point[0]
             pixel_pos: Pose2D = Pose2D
@@ -107,10 +119,20 @@ class PoseEstimator(Node):
 
             x = pixel_pos.x
             y = pixel_pos.y
-            print(self.findPixelCoords(x, y, self.depth_img))
+            pos = self.findPixelCoords(x, y, self.depth_img)
+            
+            #if approx.index(point) <= 3: #prevent the list from having more than 4 points
+            corner_pos.append(pos)
 
+        msg.corner1 = corner_pos[0]
+        msg.corner2 = corner_pos[1]
+        msg.corner3 = corner_pos[2]
+        msg.corner4 = corner_pos[3]
+        
         cv2.imshow("Virtual Wall", contouredImg)
         cv2.waitKey(1)
+        
+        self.virtWall_pub.publish(msg)
 
     #--------------------Utils--------------------
     def cropIMG(self, img: Image, bbox: BoundingBox2D):
@@ -141,13 +163,12 @@ class PoseEstimator(Node):
         print("Node farted with an intensity of", str(intensity), "kiloFarts")
 
 
-    def findPixelCoords(self, x: int, y: int, d: Image) -> Vector3:
-        coords: Vector3 = Vector3()
+    def findPixelCoords(self, x: int, y: int, d: Image) -> Point:
+        coords: Point = Point()
 
         invFx = 1/self.Fx
         invFy = 1/self.Fy
 
-        coords: Vector3 = Vector3()
         coords.x = d[y][x] * 0.001
         coords.y = ((x - 320) * coords.x * invFx) + 0.032 #320 is the width of the img divided by 2 (aka cx);
         #                                                  0.032 is the distance between the depth module and the center of the cam
