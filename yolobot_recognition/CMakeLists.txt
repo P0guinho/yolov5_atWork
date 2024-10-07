@@ -21,15 +21,23 @@ find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclpy REQUIRED)
 find_package(vision_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(custom_msgs REQUIRED)
 
 set(dependencies
   "rclpy"
   "rclcpp"
   "vision_msgs"
+  "sensor_msgs"
+  "cv_bridge"
+  "geometry_msgs"
+  "custom_msgs"
 )
 
 install(
-  DIRECTORY scripts/models scripts/utils
+  DIRECTORY scripts
   DESTINATION share/${PROJECT_NAME}
 )
 

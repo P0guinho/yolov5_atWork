@@ -162,7 +162,6 @@ class PoseEstimator(Node):
     def fart(self, intensity: int) -> None:
         print("Node farted with an intensity of", str(intensity), "kiloFarts")
 
-
     def findPixelCoords(self, x: int, y: int, d: Image) -> Point:
         coords: Point = Point()
 
