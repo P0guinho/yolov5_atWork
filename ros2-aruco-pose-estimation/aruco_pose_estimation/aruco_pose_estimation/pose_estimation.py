@@ -18,28 +18,51 @@ from aruco_interfaces.msg import ArucoMarkers
 
 # utils import python code
 from aruco_pose_estimation.utils import aruco_display
+from cv_bridge import CvBridge
 
+bridge = CvBridge()
 
+#Values for color filtering
+lower_blue = np.array([20, 80, 80])
+upper_blue = np.array([100, 255, 200])
+
+lower_red = np.array([0, 40, 80])
+upper_red = np.array([50, 255, 200])
+
+conf_red: float = 0.0
+conf_blue: float = 0.0
+
+def checkArucoColor(margin_x: int, margin_y: int, filter, blue, red, corner):
+    if margin_x <= 0 or margin_y <= 0:
+        return
+    
+    global conf_blue, conf_red
+    
+    if len(filter) > int(corner[0]) + margin_x and len(filter) > int(corner[1]) + margin_y:
+        blue_color = blue[int(corner[0]) + margin_x, int(corner[1]) + margin_y]
+        red_color = red[int(corner[0]) + margin_x, int(corner[1]) + margin_y]
+        
+        #print('b:', str(blue_color))
+        #print('r:', str(red_color))
+                    
+        if blue_color > 0:
+            conf_blue += 0.25
+            return
+        
+        if red_color > 0:
+            conf_red += 0.25
+            return
+        
+        #If didnt get the color, try again
+        new_x = int((margin_x / np.abs(margin_x)) * (np.abs(margin_x) - 1))
+        new_y = int((margin_y / np.abs(margin_y)) * (np.abs(margin_y) - 1))
+        checkArucoColor(new_x, new_y, filter, blue, red, corner)
+        
 def pose_estimation(rgb_frame: np.array, depth_frame: np.array, aruco_detector: cv2.aruco.ArucoDetector, marker_size: float,
                     matrix_coefficients: np.array, distortion_coefficients: np.array,
                     pose_array: PoseArray, markers: ArucoMarkers) -> list[np.array, PoseArray, ArucoMarkers]:
-    '''
-    rgb_frame - Frame from the RGB camera stream
-    depth_frame - Depth frame from the depth camera stream
-    matrix_coefficients - Intrinsic matrix of the calibrated camera
-    distortion_coefficients - Distortion coefficients associated with your camera
-    pose_array - PoseArray message to be published
-    markers - ArucoMarkers message to be published
-
-    return:-
-    frame - The frame with the axis drawn on it
-    pose_array - PoseArray with computed poses of the markers
-    markers - ArucoMarkers message containing markers id number and pose
-    '''
-
-    # old code version
-    # parameters = cv2.aruco.DetectorParameters_create()
-    # corners, marker_ids, _ = cv2.aruco.detectMarkers(frame, aruco_dict_type, parameters=parameters)
+    
+    global conf_blue, conf_red
 
     # new code version
     corners, marker_ids, rejected = aruco_detector.detectMarkers(image=rgb_frame)
@@ -66,7 +89,7 @@ def pose_estimation(rgb_frame: np.array, depth_frame: np.array, aruco_detector: 
             tvec, rvec, quat = my_estimatePoseSingleMarkers(corners=corners[i], marker_size=marker_size,
                                                                     camera_matrix=matrix_coefficients,
                                                                     distortion=distortion_coefficients)
-
+            
             # show the detected markers bounding boxes
             frame_processed = aruco_display(corners=corners, ids=marker_ids,
                                             image=frame_processed)
@@ -90,15 +113,15 @@ def pose_estimation(rgb_frame: np.array, depth_frame: np.array, aruco_detector: 
             if (depth_frame is not None):
                 # use computed centroid from depthcloud as estimated pose
                 pose = Pose()
-                pose.position.x = float(centroid[0]) + (0.03 * sin(quat[0]))
+                pose.position.x = float(centroid[0]) + (0.021 * np.sin(quat[0]))
                 pose.position.y = float(centroid[1])
-                pose.position.z = float(centroid[2]) + (0.03 * cos(quat[0]))
+                pose.position.z = float(centroid[2]) + (0.021 * np.cos(quat[0]))
             else:
                 # use tvec from aruco estimator as estimated pose
                 pose = Pose()
-                pose.position.x = float(tvec[0]) + (0.03 * sin(quat[0]))
+                pose.position.x = float(tvec[0]) + (0.021 * np.sin(quat[0]))
                 pose.position.y = float(tvec[1])
-                pose.position.z = float(tvec[2]) + (0.03 * cos(quat[0]))
+                pose.position.z = float(tvec[2]) + (0.021 * np.cos(quat[0]))
 
             pose.orientation.x = quat[0]
             pose.orientation.y = quat[1]
@@ -109,9 +132,44 @@ def pose_estimation(rgb_frame: np.array, depth_frame: np.array, aruco_detector: 
             pose_array.poses.append(pose)
             markers.poses.append(pose)
             markers.marker_ids.append(marker_id[0])
+            
+            for c, corner in enumerate(corners[i][0]):
+                #filter image and take the attc color
+                hsv = cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2HSV)
+        
+                red_mask = cv2.inRange(hsv, lower_red, upper_red)
+                blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
+                
+                red_mask = cv2.GaussianBlur(red_mask, (7, 7), 5)
+                blue_mask = cv2.GaussianBlur(blue_mask, (7, 7), 5)
+                                
+                match c:
+                    case 0:
+                        checkArucoColor(-15, -15, hsv, blue_mask, red_mask, corner)
+                    case 1:
+                        checkArucoColor(15, -15, hsv, blue_mask, red_mask, corner)
+                    case 2:
+                        checkArucoColor(15, 15, hsv, blue_mask, red_mask, corner)
+                    case 3:
+                        checkArucoColor(-15, 15, hsv, blue_mask, red_mask, corner)
+                
+                cv2.imshow('img', hsv)
+                cv2.imshow('red', red_mask) 
+                cv2.imshow('blue', blue_mask) 
+                cv2.waitKey(1)
+
+            if conf_red >= 0.25:
+                print("um vicenzo vermelho selvagem acabou de aparecer")
+                markers.colors.append("red")
+            
+            if conf_blue >= 0.25:
+                print("um vicenzo azul selvagem acabou de aparecer")
+                markers.colors.append("blue")
+        
+            conf_blue = 0.0
+            conf_red = 0.0
 
     return frame_processed, pose_array, markers
-
 
 def my_estimatePoseSingleMarkers(corners, marker_size, camera_matrix, distortion) -> tuple[np.array, np.array, np.array]:
     '''

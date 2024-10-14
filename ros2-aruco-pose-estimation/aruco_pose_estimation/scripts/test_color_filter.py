@@ -18,7 +18,7 @@ class PoseEstimator(Node):
         self.upper_blue = np.array([110, 255, 100])
         
         self.lower_red = np.array([0, 160, 80])
-        self.upper_red = np.array([30, 200, 170]) 
+        self.upper_red = np.array([255, 200, 170]) 
         
         self.image_sub = self.create_subscription(Image,
                                                    '/camera/camera/color/image_raw',
@@ -27,7 +27,7 @@ class PoseEstimator(Node):
 
     def filter_img(self, msg): #update received camera image
         img = bridge.imgmsg_to_cv2(msg, "bgr8")
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV) 
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) 
     
         mask = cv2.inRange(img, self.lower_red, self.upper_red) 
         

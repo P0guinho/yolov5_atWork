@@ -8,11 +8,14 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(vision_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Fourpoints.msg"
-  DEPENDENCIES geometry_msgs
+  "msg/Atworkobjects.msg"
+  "msg/Atworkobjectsarray.msg"
+  DEPENDENCIES geometry_msgs vision_msgs
 )
 
 if(BUILD_TESTING)

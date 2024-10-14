@@ -35,6 +35,9 @@ Version: 2024-01-29
 
 """
 
+#To run code:
+#ros2 launch aruco_pose_estimation aruco_pose_estimation.launch.py
+
 # ROS2 imports
 import rclpy
 import rclpy.node
@@ -55,7 +58,9 @@ from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import PoseArray
 from aruco_interfaces.msg import ArucoMarkers
+from custom_msgs.msg import Atworkobjects, Atworkobjectsarray
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
+from vision_msgs.msg import ObjectHypothesisWithPose
 
 
 class ArucoNode(rclpy.node.Node):
@@ -110,7 +115,7 @@ class ArucoNode(rclpy.node.Node):
 
         # Set up publishers
         self.poses_pub = self.create_publisher(PoseArray, self.markers_visualization_topic, 10)
-        self.markers_pub = self.create_publisher(ArucoMarkers, self.detected_markers_topic, 10)
+        self.aruco_pub = self.create_publisher(Atworkobjectsarray, self.detected_markers_topic, 10)
         self.image_pub = self.create_publisher(Image, self.output_image_topic, 10)
 
         # Set up fields for camera parameters
@@ -149,7 +154,7 @@ class ArucoNode(rclpy.node.Node):
             return
 
         # convert the image messages to cv2 format
-        cv_image = self.bridge.imgmsg_to_cv2(img_msg, desired_encoding="rgb8")
+        cv_image = self.bridge.imgmsg_to_cv2(img_msg, desired_encoding="bgr8")
 
         # create the ArucoMarkers and PoseArray messages
         markers = ArucoMarkers()
@@ -180,11 +185,28 @@ class ArucoNode(rclpy.node.Node):
                                                      marker_size=self.marker_size, matrix_coefficients=self.intrinsic_mat,
                                                      distortion_coefficients=self.distortion, pose_array=pose_array, markers=markers)
 
+        msg = Atworkobjectsarray()
+        
         # if some markers are detected
         if len(markers.marker_ids) > 0:
-            # Publish the results with the poses and markes positions
-            self.poses_pub.publish(pose_array)
-            self.markers_pub.publish(markers)
+            for i in range(len(markers.marker_ids) - 1):
+                aruco = Atworkobjects()
+                
+                if i <= len(markers.colors) - 1:
+                    aruco.color = markers.colors[i]
+                else:
+                    aruco.color = "cor de burro quando foge"
+                
+                aruco.id = markers.marker_ids[i]
+                aruco.name = aruco.color + " ATTC"
+                
+                pos = ObjectHypothesisWithPose()
+                pos.pose.pose = markers.poses[i]
+                aruco.detection.results.append(pos)
+                
+                msg.objects.append(aruco)
+            
+            self.aruco_pub.publish(msg)
 
         # publish the image frame with computed markers positions over the image
         self.image_pub.publish(self.bridge.cv2_to_imgmsg(frame, "rgb8"))
