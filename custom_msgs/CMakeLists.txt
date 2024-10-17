@@ -15,6 +15,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Fourpoints.msg"
   "msg/Atworkobjects.msg"
   "msg/Atworkobjectsarray.msg"
+  "msg/DetectionArray.msg"
   DEPENDENCIES geometry_msgs vision_msgs
 )
 

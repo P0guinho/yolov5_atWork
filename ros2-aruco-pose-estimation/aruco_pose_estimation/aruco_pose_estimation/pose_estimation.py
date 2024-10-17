@@ -23,11 +23,11 @@ from cv_bridge import CvBridge
 bridge = CvBridge()
 
 #Values for color filtering
-lower_blue = np.array([20, 80, 80])
-upper_blue = np.array([100, 255, 200])
+lower_blue = np.array([20, 80, 0])
+upper_blue = np.array([100, 255, 255])
 
-lower_red = np.array([0, 40, 80])
-upper_red = np.array([50, 255, 200])
+lower_red = np.array([0, 40, 0])
+upper_red = np.array([7, 255, 255])
 
 conf_red: float = 0.0
 conf_blue: float = 0.0
@@ -60,7 +60,7 @@ def checkArucoColor(margin_x: int, margin_y: int, filter, blue, red, corner):
         
 def pose_estimation(rgb_frame: np.array, depth_frame: np.array, aruco_detector: cv2.aruco.ArucoDetector, marker_size: float,
                     matrix_coefficients: np.array, distortion_coefficients: np.array,
-                    pose_array: PoseArray, markers: ArucoMarkers) -> list[np.array, PoseArray, ArucoMarkers]:
+                    markers: ArucoMarkers) -> list[np.array, ArucoMarkers]:
     
     global conf_blue, conf_red
 
@@ -129,7 +129,6 @@ def pose_estimation(rgb_frame: np.array, depth_frame: np.array, aruco_detector: 
             pose.orientation.w = quat[3]
 
             # add the pose and marker id to the pose_array and markers messages
-            pose_array.poses.append(pose)
             markers.poses.append(pose)
             markers.marker_ids.append(marker_id[0])
             
@@ -169,7 +168,7 @@ def pose_estimation(rgb_frame: np.array, depth_frame: np.array, aruco_detector: 
             conf_blue = 0.0
             conf_red = 0.0
 
-    return frame_processed, pose_array, markers
+    return frame_processed, markers
 
 def my_estimatePoseSingleMarkers(corners, marker_size, camera_matrix, distortion) -> tuple[np.array, np.array, np.array]:
     '''

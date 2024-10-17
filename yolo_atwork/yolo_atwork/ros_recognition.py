@@ -32,7 +32,7 @@ class Camera_subscriber(Node):
     def __init__(self):
         super().__init__('camera_subscriber')
 
-        weights='/home/gabri/at_work/src/yolo_atwork/yolo_atwork/prototipo1.pt'  # model.pt path(s)
+        weights='/home/gabri/at_work/src/yolo_atwork/yolo_atwork/objetos_1.pt'  # model.pt path(s)
         self.imgsz=640  # inference size (pixels)
         self.conf_thres=0.7  # confidence threshold
         self.iou_thres=0.45  # NMS IOU threshold
@@ -140,6 +140,8 @@ class Camera_subscriber(Node):
             s += '%gx%g ' % img.shape[2:]  # print string
 
             if len(det):
+                i: int = len(det) - 1
+                
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], img0.shape).round()
 
@@ -157,23 +159,25 @@ class Camera_subscriber(Node):
                     covariance = f'{self.names[c]} {conf:.2f}'
                     plot_one_box(xyxy, img0, label=covariance, color=colors(c, True), line_thickness=self.line_thickness)
 
-        if len(det) > 0:
-            detectPoses = det[0]
+                #self.get_logger().info(str(len(det)))
+                
+                #for detectPoses in det:
+                    msg = Detection2D()
 
-            msg = Detection2D()
+                    #Message bounding box
+                    msg.bbox.center.position.x = (float(det[i][0]) + float(det[i][2])) / 2.0
+                    msg.bbox.center.position.y = (float(det[i][1]) + float(det[i][3])) / 2.0
+                    msg.bbox.center.theta = 0.0
 
-            #Message bounding box
-            msg.bbox.center.position.x = (float(detectPoses[0]) + float(detectPoses[2])) / 2.0
-            msg.bbox.center.position.y = (float(detectPoses[1]) + float(detectPoses[3])) / 2.0
-            msg.bbox.center.theta = 0.0
+                    msg.bbox.size_x = float(det[i][2]) - float(det[i][0])
+                    msg.bbox.size_y = float(det[i][3]) - float(det[i][1])
+                    
+                    #Detection id = Detection name/label
+                    msg.id = label
+                    self.get_logger().info("Found detection with label " + label)
 
-            msg.bbox.size_x = float(detectPoses[2]) - float(detectPoses[0])
-            msg.bbox.size_y = float(detectPoses[3]) - float(detectPoses[1])
-            
-            #Detection id = Detection name/label
-            msg.id = label
-
-            self.publisher.publish(msg)
+                    self.publisher.publish(msg)
+                    i -= 1 #go from the last element to the first because this loop reverses the array for some fucking reason
 
 
         cv2.imshow("IMAGE", img0)

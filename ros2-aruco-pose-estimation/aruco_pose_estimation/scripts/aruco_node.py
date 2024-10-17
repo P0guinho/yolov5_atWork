@@ -68,6 +68,8 @@ class ArucoNode(rclpy.node.Node):
         super().__init__("aruco_node")
 
         self.initialize_parameters()
+        
+        self.i: int = 0 #Give a identification number to msgs to prevent two having the same name
 
         # Make sure we have a valid dictionary id:
         try:
@@ -114,9 +116,7 @@ class ArucoNode(rclpy.node.Node):
             )
 
         # Set up publishers
-        self.poses_pub = self.create_publisher(PoseArray, self.markers_visualization_topic, 10)
         self.aruco_pub = self.create_publisher(Atworkobjectsarray, self.detected_markers_topic, 10)
-        self.image_pub = self.create_publisher(Image, self.output_image_topic, 10)
 
         # Set up fields for camera parameters
         self.info_msg = None
@@ -158,18 +158,14 @@ class ArucoNode(rclpy.node.Node):
 
         # create the ArucoMarkers and PoseArray messages
         markers = ArucoMarkers()
-        pose_array = PoseArray()
 
         # Set the frame id and timestamp for the markers and pose array
         if self.camera_frame == "":
             markers.header.frame_id = self.info_msg.header.frame_id
-            pose_array.header.frame_id = self.info_msg.header.frame_id
         else:
             markers.header.frame_id = self.camera_frame
-            pose_array.header.frame_id = self.camera_frame
 
         markers.header.stamp = img_msg.header.stamp
-        pose_array.header.stamp = img_msg.header.stamp
 
         """
         # OVERRIDE: use calibrated intrinsic matrix and distortion coefficients
@@ -180,10 +176,10 @@ class ArucoNode(rclpy.node.Node):
         """
         
         # call the pose estimation function
-        frame, pose_array, markers = pose_estimation(rgb_frame=cv_image, depth_frame=None,
-                                                     aruco_detector=self.aruco_detector,
-                                                     marker_size=self.marker_size, matrix_coefficients=self.intrinsic_mat,
-                                                     distortion_coefficients=self.distortion, pose_array=pose_array, markers=markers)
+        frame, markers = pose_estimation(rgb_frame=cv_image, depth_frame=None,
+                                         aruco_detector=self.aruco_detector,
+                                         marker_size=self.marker_size, matrix_coefficients=self.intrinsic_mat,
+                                         distortion_coefficients=self.distortion, markers=markers)
 
         msg = Atworkobjectsarray()
         
@@ -198,7 +194,7 @@ class ArucoNode(rclpy.node.Node):
                     aruco.color = "cor de burro quando foge"
                 
                 aruco.id = markers.marker_ids[i]
-                aruco.name = aruco.color + " ATTC"
+                aruco.name = aruco.color + " ATTC No. " + str(self.i)
                 
                 pos = ObjectHypothesisWithPose()
                 pos.pose.pose = markers.poses[i]
@@ -208,8 +204,6 @@ class ArucoNode(rclpy.node.Node):
             
             self.aruco_pub.publish(msg)
 
-        # publish the image frame with computed markers positions over the image
-        self.image_pub.publish(self.bridge.cv2_to_imgmsg(frame, "rgb8"))
 
     def depth_image_callback(self, depth_msg: Image):
         if self.info_msg is None:
