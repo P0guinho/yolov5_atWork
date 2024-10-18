@@ -144,11 +144,18 @@ class PoseEstimator(Node):
     def find_stackZone_pos(self, color: Image, depth: Image, box: BoundingBox2D):
         points = []
         
-        #Append all positions. Subtracting one prevents the error "IndexError: index 480 is out of bounds for axis 0 with size 480" 
-        points.append(self.findPixelCoords(int(box.center.position.x - (box.size_x / 2)) - 1, int(box.center.position.y - (box.size_y / 2)) - 1, depth)) #-x, -y
-        points.append(self.findPixelCoords(int(box.center.position.x - (box.size_x / 2)) - 1, int(box.center.position.y + (box.size_y / 2)) - 1, depth)) #-x, +y
-        points.append(self.findPixelCoords(int(box.center.position.x + (box.size_x / 2)) - 1, int(box.center.position.y + (box.size_y / 2)) - 1, depth)) #+x, +y
-        points.append(self.findPixelCoords(int(box.center.position.x + (box.size_x / 2)) - 1, int(box.center.position.y - (box.size_y / 2)) - 1, depth)) #+x, -y
+        #Append all positions
+        points.append(self.findPixelCoords(int(box.center.position.x - (box.size_x / 2)), int(box.center.position.y - (box.size_y / 2)), depth)) #-x, -y
+        
+        #Prevent "IndexError: index 480 is out of bounds for axis 0 with size 480"
+        if int(box.center.position.y + (box.size_y / 2)) < 480:
+            points.append(self.findPixelCoords(int(box.center.position.x - (box.size_x / 2)), int(box.center.position.y + (box.size_y / 2)), depth)) #-x, +y
+            points.append(self.findPixelCoords(int(box.center.position.x + (box.size_x / 2)), int(box.center.position.y + (box.size_y / 2)), depth)) #+x, +y
+        else:
+            points.append(self.findPixelCoords(int(box.center.position.x - (box.size_x / 2)), 479, depth)) #-x, +y
+            points.append(self.findPixelCoords(int(box.center.position.x + (box.size_x / 2)), 479, depth)) #+x, +y
+            
+        points.append(self.findPixelCoords(int(box.center.position.x + (box.size_x / 2)), int(box.center.position.y - (box.size_y / 2)), depth)) #+x, -y
 
         center: Pose = Pose()
         for p in points:
@@ -156,6 +163,7 @@ class PoseEstimator(Node):
             center.position.y += p.y
             center.position.z += p.z
         
+        #Calculate the average of all positions and get the center of the stack_zone
         center.position.x /= 4
         center.position.y /= 4
         center.position.z /= 4
@@ -163,11 +171,11 @@ class PoseEstimator(Node):
         center.orientation.x = 0.0
         center.orientation.y = 0.0
         center.orientation.z = 0.0
-        center.orientation.w = 0.0
+        center.orientation.w = 1.0
         
-        self.get_logger().info("x: " + str(center.position.x) + ", y: " + str(center.position.y) + ", z: " + str(center.position.z))
+        #self.get_logger().info("x: " + str(center.position.x) + ", y: " + str(center.position.y) + ", z: " + str(center.position.z))
         
-        self.generateTF("IDK", "stack_zone_" + str(self.i), center)
+        self.generateTF("camera_link", "stack_zone_" + str(self.i), center)
     
     #--------------------Utils--------------------
     def cropIMG(self, img: Image, bbox: BoundingBox2D):
