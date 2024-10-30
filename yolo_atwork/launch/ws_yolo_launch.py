@@ -17,12 +17,12 @@ def generate_launch_description():
     ld = LaunchDescription([
         Node(
             package='yolo_atwork',
-            executable='recog_yolo',
+            executable='ws_recog_yolo',
         ),
         
         Node(
             package='yolo_atwork',
-            executable='pose_estimate',
+            executable='ws_pose_estimate',
         )
     ])
 

@@ -23,8 +23,11 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-                'recog_yolo = yolo_atwork.ros_recognition:main',
-                'pose_estimate = yolo_atwork.workspace_pose_est:main',
+                'ws_recog_yolo = yolo_atwork.workspace_recognition:main',
+                'ws_pose_estimate = yolo_atwork.workspace_pose_est:main',
+                'obj_recog_yolo = yolo_atwork.object_recognition:main',
+                'obj_pose_estimate = yolo_atwork.object_pose_est:main',
+                'test = yolo_atwork.depth_test:main'
         ],
     },
 )
