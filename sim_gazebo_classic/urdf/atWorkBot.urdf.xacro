@@ -1,0 +1,311 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="NWatBot">
+
+    <xacro:include filename="include.xacro"/>
+    <xacro:include filename="atWorkRobot.gazebo.xacro"/>
+    
+    <xacro:arg name="use_nominal_extrinsics" default="false"/>
+    <xacro:arg name="add_plug" default="false" />
+    <xacro:arg name="use_mesh" default="true" />
+    <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
+
+    <xacro:property name="chassibar_mass" value="0.284" />
+    <xacro:property name="wheel_mass" value="0.383" />
+    <xacro:property name="lidar_mass" value="0.17" />
+    <xacro:property name="base_mass" value="0.367" />
+
+    <xacro:macro name="default_inertial" params="mass">
+        <inertial>
+                <mass value="${mass}" />
+                <inertia ixx="1e-3" ixy="0.0" ixz="0.0"
+                    iyy="1e-3" iyz="0.0"
+                    izz="1e-3" />
+        </inertial>
+    </xacro:macro>
+
+    <link name="base_footprint">
+    </link>
+
+    <link name="base_link">
+        <visual>
+            <geometry>
+                <box size="0.384 0.216 0.003" />
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <material name="purple">
+                <color rgba="1 0 1 1"/>
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.384 0.216 0.003" />
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+        </collision>
+        <xacro:default_inertial mass="${base_mass}"/>
+    </link>
+
+    <joint name="baseLK_baseFootprint" type="fixed">
+        <parent link="base_footprint"/>
+        <child link="base_link"/>
+        <origin xyz="0 0 0.02795"/>
+    </joint>
+
+    <link name="chassiBar_01">
+        <visual>
+            <geometry>
+                <box size="0.384 0.048 0.048" />
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <material name="gray"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.384 0.048 0.048" />
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+        </collision>
+        <xacro:default_inertial mass="${chassibar_mass}"/>
+    </link>
+
+    <link name="chassiBar_02">
+        <visual>
+            <geometry>
+                <box size="0.384 0.048 0.048" />
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <material name="gray"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.384 0.048 0.048" />
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+        </collision>
+        <xacro:default_inertial mass="${chassibar_mass}"/>
+    </link>
+
+    <joint name="baseLink_chassiBar01" type="fixed">
+        <parent link="base_link"/>
+        <child link="chassiBar_01"/>
+        <origin xyz="0 0.132 0.02"/>
+    </joint>
+
+    <joint name="baseLink_chassiBar02" type="fixed">
+        <parent link="base_link"/>
+        <child link="chassiBar_02"/>
+        <origin xyz="0 -0.132 0.02"/>
+    </joint>
+
+    <link name="rodas_01">
+        <visual>
+            <geometry>
+                <cylinder radius="0.048" length="0.05393"/>
+            </geometry>
+            <origin rpy="1.57 0 0" xyz="0 0 0"/>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <cylinder radius="0.048" length="0.05393"/>
+            </geometry>
+            <origin rpy="1.57 0 0" xyz="0 0 0"/>
+        </collision>
+        <xacro:default_inertial mass="${wheel_mass}"/>
+    </link>
+
+    <link name="rodas_02">
+        <visual>
+            <geometry>
+                <cylinder radius="0.048" length="0.05393"/>
+            </geometry>
+            <origin rpy="1.57 0 0" xyz="0 0 0"/>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <cylinder radius="0.048" length="0.05393"/>
+            </geometry>
+            <origin rpy="1.57 0 0" xyz="0 0 0"/>
+        </collision>
+        <xacro:default_inertial mass="${wheel_mass}"/>
+    </link>
+
+    <link name="rodas_03">
+        <visual>
+            <geometry>
+                <cylinder radius="0.048" length="0.05393"/>
+            </geometry>
+            <origin rpy="1.57 0 0" xyz="0 0 0"/>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <cylinder radius="0.048" length="0.05393"/>
+            </geometry>
+            <origin rpy="1.57 0 0" xyz="0 0 0"/>
+        </collision>
+        <xacro:default_inertial mass="${wheel_mass}"/>
+    </link>
+
+    <link name="rodas_04">
+        <visual>
+            <geometry>
+                <cylinder radius="0.048" length="0.05393"/>
+            </geometry>
+            <origin rpy="1.57 0 0" xyz="0 0 0"/>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <cylinder radius="0.048" length="0.05393"/>
+            </geometry>
+            <origin rpy="1.57 0 0" xyz="0 0 0"/>
+        </collision>
+        <xacro:default_inertial mass="${wheel_mass}"/>
+    </link>
+
+    <joint name="roda02_chassi" type="fixed">
+        <parent link="chassiBar_02"/>
+        <child link="rodas_02"/>
+        <origin xyz="0.144 -0.050965 0"/>
+    </joint>
+
+    <joint name="roda04_chassi" type="fixed">
+        <parent link="chassiBar_02"/>
+        <child link="rodas_04"/>
+        <origin xyz="-0.144 -0.050965 0"/>
+    </joint>
+
+    <joint name="roda01_chassi" type="fixed">
+        <parent link="chassiBar_01"/>
+        <child link="rodas_01"/>
+        <origin xyz="0.144 0.050965 0"/>
+    </joint>
+
+    <joint name="roda03_chassi" type="fixed">
+        <parent link="chassiBar_01"/>
+        <child link="rodas_03"/>
+        <origin xyz="-0.144 0.050965 0"/>
+    </joint>
+
+    <link name="chassiBar_03">
+        <visual>
+            <geometry>
+                <box size="0.096 0.216 0.04250" />
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <material name="gray"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.096 0.216 0.04250" />
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+        </collision>
+        <xacro:default_inertial mass="${chassibar_mass}"/>
+    </link>
+
+    <joint name="baseLink_chassiBar03" type="fixed">
+        <parent link="base_link"/>
+        <child link="chassiBar_03"/>
+        <origin xyz="0 0 0.02275"/>
+    </joint>
+
+    <link name="lidar_case01">
+        <visual>
+            <geometry>
+                <box size="0.11992 0.08012 0.047" />
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <material name="purple"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.11992 0.08012 0.047" />
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+        </collision>
+        <xacro:default_inertial mass="${lidar_mass}"/>
+    </link>
+
+    <link name="lidar_case02">
+        <visual>
+            <geometry>
+                <box size="0.11992 0.08012 0.047" />
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <material name="purple"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.11992 0.08012 0.047" />
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+        </collision>
+        <xacro:default_inertial mass="${lidar_mass}"/>
+    </link>
+
+    <joint name="lidarCase01_baseLink" type="fixed">
+        <parent link="base_link"/>
+        <child link="lidar_case01"/>
+        <origin xyz="-0.205165 0 0.025"/>
+    </joint>
+
+    <joint name="lidarCase02_baseLink" type="fixed">
+        <parent link="base_link"/>
+        <child link="lidar_case02"/>
+        <origin xyz="0.205165 0 0.025"/>
+    </joint>
+
+    <link name="lidar01">
+        <visual>
+            <geometry>
+                <cylinder radius="0.037" length="0.013"/>
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <material name="gray"/>
+        </visual>
+        <collision>
+            <geometry>
+                <cylinder radius="0.037" length="0.013"/>
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+        </collision>
+        <xacro:default_inertial mass="${lidar_mass}"/>
+    </link>
+
+    <link name="lidar02">
+        <visual>
+            <geometry>
+                <cylinder radius="0.037" length="0.013"/>
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <material name="gray"/>
+        </visual>
+        <collision>
+            <geometry>
+                <cylinder radius="0.037" length="0.013"/>
+            </geometry>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+        </collision>
+        <xacro:default_inertial mass="${lidar_mass}"/>
+    </link>
+
+    <joint name="lidar01_Case" type="fixed">
+        <parent link="lidar_case01"/>
+        <child link="lidar01"/>
+        <origin xyz="-0.01299 0 0.03" rpy="0 0 3.14"/>
+    </joint>
+
+    <joint name="lidar02_Case" type="fixed">
+        <parent link="lidar_case02"/>
+        <child link="lidar02"/>
+        <origin xyz="0.01299 0 0.03" rpy="0 0 0"/>
+    </joint>
+  
+    <xacro:sensor_d435 parent="base_link" use_nominal_extrinsics="$(arg use_nominal_extrinsics)" add_plug="$(arg add_plug)" use_mesh="$(arg use_mesh)">
+        <origin xyz="0.2744 0 0.4786" rpy="0 0.523599 0"/>
+    </xacro:sensor_d435>
+
+</robot>

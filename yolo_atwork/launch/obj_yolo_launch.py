@@ -13,8 +13,14 @@ def generate_launch_description():
                          'launch/rs_launch.py')
         ),
         launch_arguments={
-            'json_file_path': '/home/gabri/at_work/src/yolo_atwork/yolo_atwork/camera_configs/default.json'
+            'json_file_path': '/home/gabri/at_work/src/yolo_atwork/yolo_atwork/configs/default.json'
         }.items()
+    )
+    robotTFlaunch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(get_package_share_directory('sim_gazebo_classic'),
+                         'launch/realbot_spawn.launch.py')
+        )
     )
 
     ld = LaunchDescription([
@@ -26,8 +32,15 @@ def generate_launch_description():
         Node(
             package='yolo_atwork',
             executable='obj_pose_estimate',
+        ),
+        Node(
+            package='rviz2',
+            namespace='',
+            executable='rviz2',
+            name='rviz2'
         )
     ])
 
     ld.add_action(cameraLaunch)
+    ld.add_action(robotTFlaunch)
     return ld

@@ -88,8 +88,8 @@ class PoseEstimator(Node):
         match msg.id:
             case "virt_wall":
                 self.find_virtWall_pose(imgC, imgD, box)
-            case "stack_zone":
-                self.find_stackZone_pos(self.cam_img, self.depth_img, box)
+            #case "stack_zone":
+                #self.find_stackZone_pos(self.cam_img, self.depth_img, box)
         
         self.i += 1
 
