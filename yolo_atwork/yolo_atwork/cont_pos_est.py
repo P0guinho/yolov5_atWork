@@ -12,16 +12,17 @@ import tf_transformations
 from rclpy.impl import rcutils_logger
 
 # ROS2 message imports
-from geometry_msgs.msg import Pose, PoseArray, TransformStamped
+from geometry_msgs.msg import Pose
+from geometry_msgs.msg import PoseArray
 from aruco_interfaces.msg import ArucoMarkers
-from yolo_atwork.aruco_utils import CONT_IDS
+from yolo_atwork.aruco_utils import ARUCO_IDS
 
 # utils import python code
 from yolo_atwork.aruco_utils import aruco_display
 from cv_bridge import CvBridge
 
 bridge = CvBridge()
-        
+
 def pose_estimation(rgb_frame: np.array, depth_frame: np.array, aruco_detector: cv2.aruco.ArucoDetector, marker_size: float,
                     matrix_coefficients: np.array, distortion_coefficients: np.array,
                     markers: ArucoMarkers) -> list[np.array, ArucoMarkers]:
@@ -91,16 +92,18 @@ def pose_estimation(rgb_frame: np.array, depth_frame: np.array, aruco_detector: 
             pose.orientation.y = quat[1]
             pose.orientation.z = quat[2]
             pose.orientation.w = quat[3]
-
-            #Get the container color
-            color = CONT_IDS.get(marker_id[0])
-            if color is None:
-                color = "cor de vidro"
             
+            color = ARUCO_IDS.get(marker_id[0])
+            if color is None:
+                color = "cor de burro quando foge"
+
             # add the pose and marker id to the pose_array and markers messages
+            markers.colors.append(color)
             markers.poses.append(pose)
             markers.marker_ids.append(marker_id[0])
-            markers.colors.append(color)
+                            
+            cv2.imshow('img', rgb_frame)
+            cv2.waitKey(1)
 
     return frame_processed, markers
 

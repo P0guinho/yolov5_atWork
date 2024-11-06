@@ -51,20 +51,22 @@ import cv2
 
 # Local imports for custom defined functions
 from yolo_atwork.aruco_utils import ARUCO_DICT
-from yolo_atwork.container_pose_est import pose_estimation
+from yolo_atwork.cont_pos_est import pose_estimation
 
 # ROS2 message imports
 from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Pose, PoseArray, TransformStamped
+from geometry_msgs.msg import PoseArray, Pose, TransformStamped
 from aruco_interfaces.msg import ArucoMarkers
+from custom_msgs.msg import Atworkobjects, Atworkobjectsarray
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
+from vision_msgs.msg import ObjectHypothesisWithPose
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 
 
 class ArucoNode(rclpy.node.Node):
     def __init__(self):
-        super().__init__("aruco_node")
+        super().__init__("container_detection")
 
         self.initialize_parameters()
         
@@ -115,6 +117,7 @@ class ArucoNode(rclpy.node.Node):
             )
 
         # Set up publishers
+        self.aruco_pub = self.create_publisher(Atworkobjectsarray, self.detected_markers_topic, 10)
         self.tf_static_broadcaster = StaticTransformBroadcaster(self)
 
         # Set up fields for camera parameters
@@ -179,11 +182,18 @@ class ArucoNode(rclpy.node.Node):
                                          aruco_detector=self.aruco_detector,
                                          marker_size=self.marker_size, matrix_coefficients=self.intrinsic_mat,
                                          distortion_coefficients=self.distortion, markers=markers)
+
+        msg = Atworkobjectsarray()
         
         # if some markers are detected
         if len(markers.marker_ids) > 0:
-            for i in range(len(markers.marker_ids) - 1):
-                self.generateTF("camera_link", markers.colors[i] + "_Container", markers.poses[i])
+            for i in range(len(markers.marker_ids)):
+                if markers.colors[i] == "cor de burro quando foge":
+                    continue
+                
+                self.get_logger().info(markers.colors[i])
+                self.generateTF("camera_color_optical_frame", markers.colors[i] + " Container", markers.poses[i])
+
 
     def depth_image_callback(self, depth_msg: Image):
         if self.info_msg is None:

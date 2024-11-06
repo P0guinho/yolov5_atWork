@@ -27,7 +27,7 @@ ARUCO_DICT = {
     "DICT_APRILTAG_36h11": cv2.aruco.DICT_APRILTAG_36h11
 }
 
-CONT_IDS = {
+ARUCO_IDS = {
     0: "Red",
     1: "Blue"
 }

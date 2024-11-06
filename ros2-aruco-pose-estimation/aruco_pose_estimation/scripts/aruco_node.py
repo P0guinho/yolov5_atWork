@@ -191,7 +191,7 @@ class ArucoNode(rclpy.node.Node):
                 if i <= len(markers.colors) - 1:
                     aruco.color = markers.colors[i]
                 else:
-                    aruco.color = "cor de burro quando foge"
+                    return
                 
                 aruco.id = markers.marker_ids[i]
                 aruco.name = aruco.color + " ATTC No. " + str(self.i)
