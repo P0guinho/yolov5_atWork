@@ -32,15 +32,9 @@ def generate_launch_description():
         Node(
             package='yolo_atwork',
             executable='obj_pose_estimate',
-        ),
-        Node(
-            package='rviz2',
-            namespace='',
-            executable='rviz2',
-            name='rviz2'
         )
     ])
 
-    ld.add_action(cameraLaunch)
-    ld.add_action(robotTFlaunch)
+    #ld.add_action(cameraLaunch)
+    #ld.add_action(robotTFlaunch)
     return ld

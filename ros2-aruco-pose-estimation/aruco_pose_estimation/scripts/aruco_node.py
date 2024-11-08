@@ -56,11 +56,12 @@ from aruco_pose_estimation.pose_estimation import pose_estimation
 # ROS2 message imports
 from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import PoseArray
+from geometry_msgs.msg import PoseArray, TransformStamped, Pose
 from aruco_interfaces.msg import ArucoMarkers
-from custom_msgs.msg import Atworkobjects, Atworkobjectsarray
+from tutorial_interfaces.msg import Atworkobjects, Atworkobjectsarray
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 from vision_msgs.msg import ObjectHypothesisWithPose
+from tf2_ros.transform_broadcaster import TransformBroadcaster
 
 
 class ArucoNode(rclpy.node.Node):
@@ -116,6 +117,7 @@ class ArucoNode(rclpy.node.Node):
             )
 
         # Set up publishers
+        self.tf_broadcaster = TransformBroadcaster(self)
         self.aruco_pub = self.create_publisher(Atworkobjectsarray, self.detected_markers_topic, 10)
 
         # Set up fields for camera parameters
@@ -186,8 +188,10 @@ class ArucoNode(rclpy.node.Node):
         # if some markers are detected
         if len(markers.marker_ids) > 0:
             for i in range(len(markers.marker_ids) - 1):
+                #Publish ATTC
                 aruco = Atworkobjects()
                 
+                #If couldnt get color, dont send anything
                 if i <= len(markers.colors) - 1:
                     aruco.color = markers.colors[i]
                 else:
@@ -201,6 +205,9 @@ class ArucoNode(rclpy.node.Node):
                 aruco.detection.results.append(pos)
                 
                 msg.objects.append(aruco)
+                
+                #Generate TF
+                self.generateTF("camera_color_frame", aruco.name, markers.poses[i])
             
             self.aruco_pub.publish(msg)
 
@@ -246,6 +253,24 @@ class ArucoNode(rclpy.node.Node):
         # publish the image frame with computed markers positions over the image
         self.image_pub.publish(self.bridge.cv2_to_imgmsg(frame, "rgb8"))
 
+    def generateTF(self, parent_name, child_name, pos: Pose):
+        transform = TransformStamped()
+        
+        transform.header.stamp = self.get_clock().now().to_msg()
+        transform.header.frame_id = parent_name
+        transform.child_frame_id = child_name
+        
+        transform.transform.translation.x = pos.position.x
+        transform.transform.translation.y = pos.position.y
+        transform.transform.translation.z = pos.position.z
+        
+        transform.transform.rotation.x = pos.orientation.x
+        transform.transform.rotation.y = pos.orientation.y
+        transform.transform.rotation.z = pos.orientation.z
+        transform.transform.rotation.w = pos.orientation.w
+        
+        self.tf_broadcaster.sendTransform(transform)
+    
     def initialize_parameters(self):
         # Declare and read parameters from aruco_params.yaml
         self.declare_parameter(

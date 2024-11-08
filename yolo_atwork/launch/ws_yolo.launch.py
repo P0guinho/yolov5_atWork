@@ -138,14 +138,9 @@ def generate_launch_description():
             }],
             output='screen',
             emulate_tty=True
-        ),
-        
-        Node(
-            package='rviz2',
-            executable='rviz2',
         )
     ])
 
-    ld.add_action(cameraLaunch)
-    ld.add_action(robotTFlaunch)
+    #ld.add_action(cameraLaunch)
+    #ld.add_action(robotTFlaunch)
     return ld

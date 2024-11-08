@@ -58,7 +58,7 @@ from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import PoseArray, Pose, TransformStamped
 from aruco_interfaces.msg import ArucoMarkers
-from custom_msgs.msg import Atworkobjects, Atworkobjectsarray
+from tutorial_interfaces.msg import Atworkobjects, Atworkobjectsarray
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 from vision_msgs.msg import ObjectHypothesisWithPose
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster

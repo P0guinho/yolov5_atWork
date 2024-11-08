@@ -108,7 +108,7 @@ def generate_launch_description():
     )
 
     # launch realsense camera node
-    cam_feed_launch_file = PathJoinSubstitution(
+    """cam_feed_launch_file = PathJoinSubstitution(
         [FindPackageShare("realsense2_camera"), "launch", "rs_launch.py"]
     )
 
@@ -132,7 +132,7 @@ def generate_launch_description():
             "enable_color": "true",
         }.items(),
         condition=UnlessCondition(LaunchConfiguration('use_depth_input'))
-    )
+    )"""
 
     rviz_file = PathJoinSubstitution([
         FindPackageShare('aruco_pose_estimation'),
@@ -160,8 +160,5 @@ def generate_launch_description():
         output_image_topic_arg,
 
         # Nodes
-        aruco_node, 
-        camera_feed_depth_node,
-        camera_feed_node,
-        rviz2_node
+        aruco_node
     ])

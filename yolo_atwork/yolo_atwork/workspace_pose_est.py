@@ -8,7 +8,7 @@ from geometry_msgs.msg import Pose2D, Point, TransformStamped, Pose
 from cv_bridge import CvBridge, CvBridgeError
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 
-from custom_msgs.msg import Fourpoints
+from tutorial_interfaces.msg import Fourpoints
 
 import cv2
 import numpy as np

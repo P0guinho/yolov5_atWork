@@ -1,11 +1,12 @@
 import rclpy
 from rclpy.node import Node
 
-from vision_msgs.msg import Detection2D, BoundingBox2D
+from vision_msgs.msg import Detection2D, BoundingBox2D, ObjectHypothesisWithPose
 from sensor_msgs.msg import Image, CameraInfo
-from geometry_msgs.msg import Pose2D, Point, TransformStamped, Pose
+from geometry_msgs.msg import Pose2D, Point, TransformStamped, Pose, PoseWithCovariance
 from cv_bridge import CvBridge, CvBridgeError
 from tf2_ros.transform_broadcaster import TransformBroadcaster
+from tutorial_interfaces.msg import Atworkobjects, Atworkobjectsarray
 
 from PIL import Image as IMG #If we import it as Image it conflits with ros' Image and explodes the robot
 
@@ -35,6 +36,25 @@ class PoseEstimator(Node):
         self.rotMat = np.zeros((3, 3))
                 
         self.cam_rot = np.deg2rad(30)
+        
+        self.object_ids = {
+            "BarraPretaMenor": 1,
+            "BarraCinzaMenor" : 2,
+            "BarraPretaMaior" : 3,
+            "BarraCinzaMaior" : 4,
+            "Parafuso" : 5,
+            #"Porca" : 6,
+            "Porca" : 7,   
+        }
+        self.object_colors = {
+            "BarraPretaMenor": "Preta",
+            "BarraCinzaMenor" : "Cinza",
+            "BarraPretaMaior" : "Preta",
+            "BarraCinzaMaior" : "Cinza",
+            "Parafuso" : "Preta",
+            #"Porca" : "Cinza",
+            "Porca" : "Cinza",   
+        }
 
         self.image_sub = self.create_subscription(Image,
                                                    '/camera/camera/color/image_raw',
@@ -54,6 +74,9 @@ class PoseEstimator(Node):
                                                    10)
         
         self.tf_broadcaster = TransformBroadcaster(self)
+        self.object_pub = self.create_publisher(Atworkobjects,
+                                                'yolo/object_poses',
+                                                10)
 
     #--------------------Receive info--------------------
     def receive_cam_coefs(self, msg: CameraInfo):
@@ -180,12 +203,34 @@ class PoseEstimator(Node):
         pos.position.y = -(self.findPixelCoords(int(box.center.position.x), int(box.center.position.y), self.depth_img).y) #Y is inverted
         pos.position.z = (lowestPos[2] + highestPos[2]) / 2.0
         
+        pos.orientation.x = 0.0
+        pos.orientation.y = 0.0
+        pos.orientation.z = 0.0
+        pos.orientation.w = 1.0
+        
         if pos.position.x == 500:
             self.get_logger().info("Couldnt find object position")
             return
         
         self.generateTF("camera_depth_frame", msg.id, pos)
         self.get_logger().info("x: " + str(pos.position.x) + ", y: " + str(pos.position.y) + ", z: " + str(pos.position.z))
+        
+        obj = Atworkobjects()
+        if self.object_ids.get(msg.id) == None:
+            return
+        
+        obj.id = self.object_ids.get(msg.id)
+        obj.name = msg.id
+        obj.color = self.object_colors.get(msg.id)
+        obj.detection = msg
+        
+        result = ObjectHypothesisWithPose()
+        result.hypothesis.class_id = obj.name
+        result.hypothesis.score = 10000.0
+        result.pose.pose = pos
+        obj.detection.results.append(result)
+        
+        self.object_pub.publish(obj)
         
         
 
