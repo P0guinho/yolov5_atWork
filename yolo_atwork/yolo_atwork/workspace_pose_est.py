@@ -10,6 +10,10 @@ from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 
 from tutorial_interfaces.msg import Fourpoints
 
+from rclpy.action import ActionClient
+from text_to_speech_msgs.action import TTS
+from text_to_speech_msgs.msg import Config
+
 import cv2
 import numpy as np
 
@@ -35,6 +39,9 @@ class PoseEstimator(Node):
         self.i: int = 0 #Give a identification number to tfs/msgs to prevent two having the same name
         
         self.dist_from_floor: float = 0.49439 #Distance from the cam to the floor (meters)
+        
+        self.text2speech_client = ActionClient(self, TTS, '/text_to_speech/tts')
+        self.foundWSes = []
 
         self.image_sub = self.create_subscription(Image,
                                                    '/camera/camera/color/image_raw',

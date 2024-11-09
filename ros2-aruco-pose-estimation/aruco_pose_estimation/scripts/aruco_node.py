@@ -62,6 +62,9 @@ from tutorial_interfaces.msg import Atworkobjects, Atworkobjectsarray
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 from vision_msgs.msg import ObjectHypothesisWithPose
 from tf2_ros.transform_broadcaster import TransformBroadcaster
+from rclpy.action import ActionClient
+from text_to_speech_msgs.action import TTS
+from text_to_speech_msgs.msg import Config
 
 
 class ArucoNode(rclpy.node.Node):
@@ -118,7 +121,10 @@ class ArucoNode(rclpy.node.Node):
 
         # Set up publishers
         self.tf_broadcaster = TransformBroadcaster(self)
+        self.foundIDs = []
         self.aruco_pub = self.create_publisher(Atworkobjectsarray, self.detected_markers_topic, 10)
+        
+        self.text2speech_client = ActionClient(self, TTS, '/text_to_speech/tts')
 
         # Set up fields for camera parameters
         self.info_msg = None
@@ -208,9 +214,24 @@ class ArucoNode(rclpy.node.Node):
                 
                 #Generate TF
                 self.generateTF("camera_color_frame", aruco.name, markers.poses[i])
+                
+                if aruco.id in self.foundIDs:
+                    pass
+                else:
+                    self.saySomeShit("Achei um " + markers.colors[i] + " A T T C", 5.0, 'pt-br')
+                    self.foundIDs.append(aruco.id)
             
             self.aruco_pub.publish(msg)
 
+    def saySomeShit(self, text, volume: float, language):
+        goal_msg = TTS.Goal()
+        goal_msg.text = text
+        goal_msg.config.volume = volume
+        goal_msg.config.language = language
+
+        self.text2speech_client.wait_for_server()
+
+        return self.text2speech_client.send_goal_async(goal_msg)
 
     def depth_image_callback(self, depth_msg: Image):
         if self.info_msg is None:

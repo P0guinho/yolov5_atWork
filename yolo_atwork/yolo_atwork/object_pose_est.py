@@ -7,6 +7,9 @@ from geometry_msgs.msg import Pose2D, Point, TransformStamped, Pose, PoseWithCov
 from cv_bridge import CvBridge, CvBridgeError
 from tf2_ros.transform_broadcaster import TransformBroadcaster
 from tutorial_interfaces.msg import Atworkobjects, Atworkobjectsarray
+from rclpy.action import ActionClient
+from text_to_speech_msgs.action import TTS
+from text_to_speech_msgs.msg import Config
 
 from PIL import Image as IMG #If we import it as Image it conflits with ros' Image and explodes the robot
 
@@ -56,6 +59,9 @@ class PoseEstimator(Node):
             "Porca" : "Cinza",   
         }
 
+        self.text2speech_client = ActionClient(self, TTS, '/text_to_speech/tts')
+        self.foundObjects = []
+        
         self.image_sub = self.create_subscription(Image,
                                                    '/camera/camera/color/image_raw',
                                                    self.image_info,
@@ -231,6 +237,11 @@ class PoseEstimator(Node):
         obj.detection.results.append(result)
         
         self.object_pub.publish(obj)
+        if obj.name in self.foundObjects:
+            pass
+        else:
+            self.saySomeShit("Achei um " + obj.name, 5.0, 'pt-br')
+            self.foundObjects.append(obj.name)
         
         
 
@@ -266,6 +277,7 @@ class PoseEstimator(Node):
 
     def fart(self, intensity: int) -> None:
         self.get_logger().info("Node farted with an intensity of " + str(intensity) + " kiloFarts")
+        self.saySomeShit("Node farted with an intensity of " + str(intensity) + " kiloFarts", 5.0, 'en')
 
     def findPixelCoords(self, x: float, y: float, d: Image) -> Point:
         coords: Point = Point()
@@ -296,6 +308,16 @@ class PoseEstimator(Node):
         transform.transform.rotation.w = pos.orientation.w
         
         self.tf_broadcaster.sendTransform(transform)
+    
+    def saySomeShit(self, text, volume: float, language):
+        goal_msg = TTS.Goal()
+        goal_msg.text = text
+        goal_msg.config.volume = volume
+        goal_msg.config.language = language
+
+        self.text2speech_client.wait_for_server()
+
+        return self.text2speech_client.send_goal_async(goal_msg)
         
 
 #--------------------Main--------------------

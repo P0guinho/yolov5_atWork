@@ -11,10 +11,11 @@ import os
 from ament_index_python.packages import get_package_share_directory
 import yaml
 
-includeRobotURDF: bool = True
-includeWSdetection: bool = True
-includeObjDetection: bool = True
+includeRobotURDF: bool = False
+includeWSdetection: bool = False
+includeObjDetection: bool = False
 includeATTCdetection: bool = True
+includeTTS: bool = True
 
 def generate_launch_description():
 
@@ -30,6 +31,15 @@ def generate_launch_description():
         }.items()
     )
     ld.add_action(cameraLaunch)
+    
+    if includeTTS:
+        ttsLaunch = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(get_package_share_directory('text_to_speech'),
+                            'text_to_speech.launch.py')
+            )
+        )
+        ld.add_action(ttsLaunch)
     
     if includeRobotURDF:
         robotTFlaunch = IncludeLaunchDescription(

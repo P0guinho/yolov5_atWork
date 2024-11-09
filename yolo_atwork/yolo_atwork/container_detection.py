@@ -62,6 +62,9 @@ from tutorial_interfaces.msg import Atworkobjects, Atworkobjectsarray
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 from vision_msgs.msg import ObjectHypothesisWithPose
 from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
+from rclpy.action import ActionClient
+from text_to_speech_msgs.action import TTS
+from text_to_speech_msgs.msg import Config
 
 
 class ArucoNode(rclpy.node.Node):
@@ -119,6 +122,9 @@ class ArucoNode(rclpy.node.Node):
         # Set up publishers
         self.aruco_pub = self.create_publisher(Atworkobjectsarray, self.detected_markers_topic, 10)
         self.tf_static_broadcaster = StaticTransformBroadcaster(self)
+        
+        self.text2speech_client = ActionClient(self, TTS, '/text_to_speech/tts')
+        self.foundColors = []
 
         # Set up fields for camera parameters
         self.info_msg = None
@@ -193,6 +199,12 @@ class ArucoNode(rclpy.node.Node):
                 
                 self.get_logger().info(markers.colors[i])
                 self.generateTF("camera_color_optical_frame", markers.colors[i] + " Container", markers.poses[i])
+                
+                if markers.colors[i] in self.foundColors:
+                    pass
+                else:
+                    self.saySomeShit("Achei um " + markers.colors[i] + " Container", 5.0, 'pt-br')
+                    self.foundColors.append(markers.colors[i])
 
 
     def depth_image_callback(self, depth_msg: Image):
@@ -236,6 +248,16 @@ class ArucoNode(rclpy.node.Node):
         # publish the image frame with computed markers positions over the image
         self.image_pub.publish(self.bridge.cv2_to_imgmsg(frame, "rgb8"))
 
+    def saySomeShit(self, text, volume: float, language):
+        goal_msg = TTS.Goal()
+        goal_msg.text = text
+        goal_msg.config.volume = volume
+        goal_msg.config.language = language
+
+        self.text2speech_client.wait_for_server()
+
+        return self.text2speech_client.send_goal_async(goal_msg)
+    
     def generateTF(self, parent_name, child_name, pos: Pose):
         transform = TransformStamped()
         
