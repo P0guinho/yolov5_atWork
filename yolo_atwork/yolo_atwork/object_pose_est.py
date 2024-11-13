@@ -41,7 +41,7 @@ class PoseEstimator(Node):
         self.cam_rot = np.deg2rad(30)
         
         self.object_ids = {
-            "BarraPretaMenor": 1,
+            "BarraPretaMenor" : 1,
             "BarraCinzaMenor" : 2,
             "BarraPretaMaior" : 3,
             "BarraCinzaMaior" : 4,
@@ -58,7 +58,7 @@ class PoseEstimator(Node):
             "BarraPretaMaior" : "Preta",
             "BarraCinzaMaior" : "Cinza",
             "Parafuso" : "Preta",
-            "PorcaPequena" : "Cinza",
+            "PorcaPequena" : "Preta",
             "PorcaGrande" : "Preta", 
             "ChaveDeBoca" : "Cinza",
             "Broca" : "Cinza",
@@ -142,8 +142,8 @@ class PoseEstimator(Node):
             
             #Resize the image to take the position of the contours pixels more "inside" the shape, to prevent getting part of the table position
             pilIMG = IMG.fromarray(imgC)        
-            if pilIMG.size[1] > 0: pilIMG.thumbnail((pilIMG.size[0] / 1.25, pilIMG.size[1] / 1.25))
-            else: return
+            try: pilIMG.thumbnail((pilIMG.size[0] / 1.25, pilIMG.size[1] / 1.25))
+            except ZeroDivisionError: return
             newIMG = np.asarray(pilIMG)
             
             newIMG = cv2.Canny(newIMG, self.canny_thre1, self.canny_thre2) #get edges
@@ -226,8 +226,34 @@ class PoseEstimator(Node):
                 self.get_logger().info("Couldnt find object position")
                 return
             
+            #The nut is kinda hard for the robot to differentiate between the big and the small, so we get it by code
+            if msg.id == "PorcaPequena" or msg.id == "PorcaGrande":
+                difference = (self.findPixelCoords(int(box.center.position.x + box.size_x / 2), int(box.center.position.y), self.depth_img).y) - (self.findPixelCoords(int(box.center.position.x - box.size_x / 2), int(box.center.position.y), self.depth_img).y)
+                if difference > 0.04:
+                    msg.id = "PorcaGrande"
+                else:
+                    msg.id = "PorcaPequena"
+            
+            #Same thing with the bars
+            if "Barra" in msg.id:
+                msg.id = "Barra"
+                
+                color = imgC[int(len(imgC) / 2)][int(len(imgC[0]) / 2)] #Color in the middle of the image
+                difference = highestPos[0] - lowestPos[0]
+                
+                #self.get_logger().info(str(difference))
+                
+                if color > 200:
+                    msg.id += "Preta"
+                else:
+                    msg.id += "Cinza"
+
+                #VIVA O CADAMURO!!!!!!!!!!!!!
+                msg.id += "Menor"
+                
             self.generateTF("camera_depth_frame", msg.id, pos)
-            self.get_logger().info("x: " + str(pos.position.x) + ", y: " + str(pos.position.y) + ", z: " + str(pos.position.z))
+            #self.get_logger().info("x: " + str(pos.position.x) + ", y: " + str(pos.position.y) + ", z: " + str(pos.position.z))
+            self.get_logger().info(msg.id)
             
             obj = Atworkobjects()
             if self.object_ids.get(msg.id) == None:

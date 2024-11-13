@@ -120,7 +120,14 @@ class ArucoNode(rclpy.node.Node):
                 Image, self.image_topic, self.image_callback, qos_profile_sensor_data
             )
 
-        self.detection: Detection2D
+        self.detection: Detection2D = Detection2D()
+        
+        #Prevent getting an error where the code tries to use a null value self.detection
+        self.detection.bbox.center.position.x = 0
+        self.detection.bbox.center.position.y = 0
+        self.detection.bbox.size_x = 0
+        self.detection.bbox.size_y = 0
+        
         self.yolo_sub = self.create_subscription(Detection2D,
                                                    'yolo/object_detection',
                                                    self.yolo_sub,
