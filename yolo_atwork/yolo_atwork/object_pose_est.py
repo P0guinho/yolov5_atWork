@@ -46,8 +46,11 @@ class PoseEstimator(Node):
             "BarraPretaMaior" : 3,
             "BarraCinzaMaior" : 4,
             "Parafuso" : 5,
-            #"Porca" : 6,
-            "Porca" : 7,   
+            "PorcaPequena" : 6,
+            "PorcaGrande" : 7, 
+            "ChaveDeBoca" : 25,
+            "Broca" : 26,
+            "Allen" : 27  
         }
         self.object_colors = {
             "BarraPretaMenor": "Preta",
@@ -55,8 +58,11 @@ class PoseEstimator(Node):
             "BarraPretaMaior" : "Preta",
             "BarraCinzaMaior" : "Cinza",
             "Parafuso" : "Preta",
-            #"Porca" : "Cinza",
-            "Porca" : "Cinza",   
+            "PorcaPequena" : "Cinza",
+            "PorcaGrande" : "Preta", 
+            "ChaveDeBoca" : "Cinza",
+            "Broca" : "Cinza",
+            "Allen" : "Preta"    
         }
 
         self.text2speech_client = ActionClient(self, TTS, '/text_to_speech/tts')
@@ -116,12 +122,12 @@ class PoseEstimator(Node):
 
     #--------------------Estimate pose--------------------
     def find_pose(self, msg: Detection2D):
+        if msg.id == "cont_blue" or msg.id == "cont_red":
+            return
+        
         imgC = self.cropIMG(self.cam_img, msg.bbox) #cropped color img
         imgD = self.cropIMG(self.depth_img, msg.bbox) #cropped depth img
         box = msg.bbox
-        
-        if len(imgC) == 0:
-            return
         
         #Detect contours
         #imgC = cv2.GaussianBlur(imgC, (7, 7), 1) #blur img
@@ -129,125 +135,129 @@ class PoseEstimator(Node):
         bins=np.array([0, 51, 102, 153, 204, 255])
         imgC[:, :, :] = np.digitize(imgC[:, :, :], bins, right=True) * 51
         
-        imgC = cv2.cvtColor(imgC, cv2.COLOR_BGR2GRAY) #convert img to grayscale
-        
-        cv2.imshow("ImgC", imgC)
-        
-        #Resize the image to take the position of the contours pixels more "inside" the shape, to prevent getting part of the table position
-        pilIMG = IMG.fromarray(imgC)        
-        pilIMG.thumbnail((pilIMG.size[0] / 1.25, pilIMG.size[1] / 1.25))
-        newIMG = np.asarray(pilIMG)
-        
-        newIMG = cv2.Canny(newIMG, self.canny_thre1, self.canny_thre2) #get edges
-
-        dilKernel = np.ones((3, 3))
-        newIMG = cv2.dilate(newIMG, dilKernel) #dilate img
-
-        contours, hierarchy = cv2.findContours(newIMG, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE) #get contours
-        approx = [[[0, 0]]] #prevent getting an error that code tries to iterate over an empty approx
-        contouredImg = newIMG.copy()
-        for cont in contours:
-            area = cv2.contourArea(cont)
-
-            if area > 1000: #checking the area helps reducing noise
-                cv2.drawContours(contouredImg, contours, -1, (255, 0, 255), 3)
-
-                perimeter = cv2.arcLength(cont, True) #get shape perimeter
-                approx = cv2.approxPolyDP(cont, 0.02 * perimeter, True) #approximate what shape it is
-                #self.get_logger().info("Object has " + str(len(approx)) + " points with an area of " + str(area))
-
-        
-        
-        
-        #Get position (middle)
-        corner_pos = []
-        for i, point in enumerate(approx):
-            p = point[0]
-            pixel_pos: Pose2D = Pose2D
-            pixel_pos.x = p[0]
-            pixel_pos.y = p[1]
-            pixel_pos.theta = 0.0
+        try:
+            imgC = cv2.cvtColor(imgC, cv2.COLOR_BGR2GRAY) #convert img to grayscale
             
-            #Transform pixel pos in the small image to the pos in the normal image (len(imgC) is the length in the y axis and len(imgC[0]) in the x axis)
-            pixel_pos.x = p[0] + ((len(imgC[0]) - len(newIMG[0])) / 2)
-            pixel_pos.y = p[1] + ((len(imgC) - len(newIMG)) / 2)
+            cv2.imshow("ImgC", imgC)
+            
+            #Resize the image to take the position of the contours pixels more "inside" the shape, to prevent getting part of the table position
+            pilIMG = IMG.fromarray(imgC)        
+            if pilIMG.size[1] > 0: pilIMG.thumbnail((pilIMG.size[0] / 1.25, pilIMG.size[1] / 1.25))
+            else: return
+            newIMG = np.asarray(pilIMG)
+            
+            newIMG = cv2.Canny(newIMG, self.canny_thre1, self.canny_thre2) #get edges
 
-            pixel_pos = self.uncropIMG(box, pixel_pos)
+            dilKernel = np.ones((3, 3))
+            newIMG = cv2.dilate(newIMG, dilKernel) #dilate img
+
+            contours, hierarchy = cv2.findContours(newIMG, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE) #get contours
+            approx = [[[0, 0]]] #prevent getting an error that code tries to iterate over an empty approx
+            contouredImg = newIMG.copy()
+            for cont in contours:
+                area = cv2.contourArea(cont)
+
+                if area > 1000: #checking the area helps reducing noise
+                    cv2.drawContours(contouredImg, contours, -1, (255, 0, 255), 3)
+
+                    perimeter = cv2.arcLength(cont, True) #get shape perimeter
+                    approx = cv2.approxPolyDP(cont, 0.02 * perimeter, True) #approximate what shape it is
+                    #self.get_logger().info("Object has " + str(len(approx)) + " points with an area of " + str(area))
+
             
-            x = pixel_pos.x
-            y = pixel_pos.y
-            pos = self.findPixelCoords(int(x), int(y), self.depth_img)
-        
             
-            if pos.x == 0:
-                continue
             
-            corner_pos.append(pos)
-        
-        pos: Pose = Pose()
-        
-        """Because of noise in  the depth image, corner.x may be 0 and, because of that, y and z will be fucked up.
-            To prevent having a [0, 0, 0] on one of these arrays, before adding a value, we check first if corner.x is higher than 0.
-            Also, the lowestPos array starts as [1000, 1000, 1000], so anything higher than 0 (a true value) can replace it, and the same thing for highestPos"""
-        highestPos = [0, 0, 0]
-        lowestPos = [1000, 1000, 1000]
-        
-        for i, corner in enumerate(corner_pos):
-            if corner.x < lowestPos[0]:
-                lowestPos[0] = corner.x
-            elif corner.x > highestPos[0]:
-                highestPos[0] = corner.x
-                    
-            if corner.z < lowestPos[2]:
-                lowestPos[2] = corner.z
-            elif corner.z > highestPos[2]:
-                highestPos[2] = corner.z
+            #Get position (middle)
+            corner_pos = []
+            for i, point in enumerate(approx):
+                p = point[0]
+                pixel_pos: Pose2D = Pose2D
+                pixel_pos.x = p[0]
+                pixel_pos.y = p[1]
+                pixel_pos.theta = 0.0
                 
-        
-        
-        pos.position.x = (lowestPos[0] + highestPos[0]) / 2.0
-        pos.position.y = -(self.findPixelCoords(int(box.center.position.x), int(box.center.position.y), self.depth_img).y) #Y is inverted
-        pos.position.z = (lowestPos[2] + highestPos[2]) / 2.0
-        
-        pos.orientation.x = 0.0
-        pos.orientation.y = 0.0
-        pos.orientation.z = 0.0
-        pos.orientation.w = 1.0
-        
-        if pos.position.x == 500:
-            self.get_logger().info("Couldnt find object position")
-            return
-        
-        self.generateTF("camera_depth_frame", msg.id, pos)
-        self.get_logger().info("x: " + str(pos.position.x) + ", y: " + str(pos.position.y) + ", z: " + str(pos.position.z))
-        
-        obj = Atworkobjects()
-        if self.object_ids.get(msg.id) == None:
-            return
-        
-        obj.id = self.object_ids.get(msg.id)
-        obj.name = msg.id
-        obj.color = self.object_colors.get(msg.id)
-        obj.detection = msg
-        
-        result = ObjectHypothesisWithPose()
-        result.hypothesis.class_id = obj.name
-        result.hypothesis.score = 10000.0
-        result.pose.pose = pos
-        obj.detection.results.append(result)
-        
-        self.object_pub.publish(obj)
-        if obj.name in self.foundObjects:
-            pass
-        else:
-            self.saySomeShit("Achei um " + obj.name, 5.0, 'pt-br')
-            self.foundObjects.append(obj.name)
-        
-        
+                #Transform pixel pos in the small image to the pos in the normal image (len(imgC) is the length in the y axis and len(imgC[0]) in the x axis)
+                pixel_pos.x = p[0] + ((len(imgC[0]) - len(newIMG[0])) / 2)
+                pixel_pos.y = p[1] + ((len(imgC) - len(newIMG)) / 2)
 
-        cv2.imshow("Object", contouredImg)
-        cv2.waitKey(1)
-    
+                pixel_pos = self.uncropIMG(box, pixel_pos)
+                
+                x = pixel_pos.x
+                y = pixel_pos.y
+                pos = self.findPixelCoords(int(x), int(y), self.depth_img)
+            
+                
+                if pos.x == 0:
+                    continue
+                
+                corner_pos.append(pos)
+            
+            pos: Pose = Pose()
+            
+            """Because of noise in  the depth image, corner.x may be 0 and, because of that, y and z will be fucked up.
+                To prevent having a [0, 0, 0] on one of these arrays, before adding a value, we check first if corner.x is higher than 0.
+                Also, the lowestPos array starts as [1000, 1000, 1000], so anything higher than 0 (a true value) can replace it, and the same thing for highestPos"""
+            highestPos = [0, 0, 0]
+            lowestPos = [1000, 1000, 1000]
+            
+            for i, corner in enumerate(corner_pos):
+                if corner.x < lowestPos[0]:
+                    lowestPos[0] = corner.x
+                elif corner.x > highestPos[0]:
+                    highestPos[0] = corner.x
+                        
+                if corner.z < lowestPos[2]:
+                    lowestPos[2] = corner.z
+                elif corner.z > highestPos[2]:
+                    highestPos[2] = corner.z
+                    
+            
+            
+            pos.position.x = (lowestPos[0] + highestPos[0]) / 2.0
+            pos.position.y = -(self.findPixelCoords(int(box.center.position.x), int(box.center.position.y), self.depth_img).y) #Y is inverted
+            pos.position.z = (lowestPos[2] + highestPos[2]) / 2.0
+            
+            pos.orientation.x = 0.0
+            pos.orientation.y = 0.0
+            pos.orientation.z = 0.0
+            pos.orientation.w = 1.0
+            
+            if pos.position.x == 500:
+                self.get_logger().info("Couldnt find object position")
+                return
+            
+            self.generateTF("camera_depth_frame", msg.id, pos)
+            self.get_logger().info("x: " + str(pos.position.x) + ", y: " + str(pos.position.y) + ", z: " + str(pos.position.z))
+            
+            obj = Atworkobjects()
+            if self.object_ids.get(msg.id) == None:
+                return
+            
+            obj.id = self.object_ids.get(msg.id)
+            obj.name = msg.id
+            obj.color = self.object_colors.get(msg.id)
+            obj.detection = msg
+            
+            result = ObjectHypothesisWithPose()
+            result.hypothesis.class_id = obj.name
+            result.hypothesis.score = 10000.0
+            result.pose.pose = pos
+            obj.detection.results.append(result)
+            
+            self.object_pub.publish(obj)
+            if obj.name in self.foundObjects:
+                pass
+            else:
+                #self.saySomeShit("Achei um " + obj.name, 5.0, 'pt-br')
+                self.foundObjects.append(obj.name)
+            
+            
+
+            cv2.imshow("Object", contouredImg)
+            cv2.waitKey(1)
+        except cv2.error:
+            self.get_logger().info("The object pose estimation node just tried to commit suicide but we are not going to let him die")
+        
     #--------------------Utils--------------------
     def cropIMG(self, img: Image, bbox: BoundingBox2D):
         box_center = bbox.center.position
@@ -277,7 +287,7 @@ class PoseEstimator(Node):
 
     def fart(self, intensity: int) -> None:
         self.get_logger().info("Node farted with an intensity of " + str(intensity) + " kiloFarts")
-        self.saySomeShit("Node farted with an intensity of " + str(intensity) + " kiloFarts", 5.0, 'en')
+        #self.saySomeShit("Node farted with an intensity of " + str(intensity) + " kiloFarts", 5.0, 'en')
 
     def findPixelCoords(self, x: float, y: float, d: Image) -> Point:
         coords: Point = Point()

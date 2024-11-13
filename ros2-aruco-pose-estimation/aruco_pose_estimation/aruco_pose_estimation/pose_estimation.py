@@ -23,11 +23,11 @@ from cv_bridge import CvBridge
 bridge = CvBridge()
 
 #Values for color filtering
-lower_blue = np.array([20, 80, 0])
-upper_blue = np.array([100, 255, 255])
+lower_blue = np.array([28, 88, 0])
+upper_blue = np.array([149, 255, 255])
 
-lower_red = np.array([0, 40, 0])
-upper_red = np.array([7, 255, 255])
+lower_red = np.array([0, 114, 0])
+upper_red = np.array([23, 255, 255])
 
 conf_red: float = 0.0
 conf_blue: float = 0.0
@@ -72,7 +72,6 @@ def pose_estimation(rgb_frame: np.array, depth_frame: np.array, aruco_detector: 
 
     # If markers are detected
     if len(corners) > 0:
-
         logger.debug("Detected {} markers.".format(len(corners)))
 
         for i, marker_id in enumerate(marker_ids):
@@ -168,7 +167,7 @@ def pose_estimation(rgb_frame: np.array, depth_frame: np.array, aruco_detector: 
             conf_blue = 0.0
             conf_red = 0.0
 
-    return frame_processed, markers
+    return frame_processed, markers, corners
 
 def my_estimatePoseSingleMarkers(corners, marker_size, camera_matrix, distortion) -> tuple[np.array, np.array, np.array]:
     '''

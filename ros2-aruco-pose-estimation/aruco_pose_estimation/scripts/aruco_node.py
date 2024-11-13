@@ -51,7 +51,7 @@ import cv2
 
 # Local imports for custom defined functions
 from aruco_pose_estimation.utils import ARUCO_DICT
-from aruco_pose_estimation.pose_estimation import pose_estimation
+from aruco_pose_estimation.pose_estimation import pose_estimation, is_pixel_in_polygon
 
 # ROS2 message imports
 from sensor_msgs.msg import CameraInfo
@@ -60,8 +60,9 @@ from geometry_msgs.msg import PoseArray, TransformStamped, Pose
 from aruco_interfaces.msg import ArucoMarkers
 from tutorial_interfaces.msg import Atworkobjects, Atworkobjectsarray
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
-from vision_msgs.msg import ObjectHypothesisWithPose
+from vision_msgs.msg import ObjectHypothesisWithPose, Detection2D
 from tf2_ros.transform_broadcaster import TransformBroadcaster
+from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 from rclpy.action import ActionClient
 from text_to_speech_msgs.action import TTS
 from text_to_speech_msgs.msg import Config
@@ -119,8 +120,15 @@ class ArucoNode(rclpy.node.Node):
                 Image, self.image_topic, self.image_callback, qos_profile_sensor_data
             )
 
+        self.detection: Detection2D
+        self.yolo_sub = self.create_subscription(Detection2D,
+                                                   'yolo/object_detection',
+                                                   self.yolo_sub,
+                                                   10)
+        
         # Set up publishers
         self.tf_broadcaster = TransformBroadcaster(self)
+        self.static_tf_broadcaster = StaticTransformBroadcaster(self)
         self.foundIDs = []
         self.aruco_pub = self.create_publisher(Atworkobjectsarray, self.detected_markers_topic, 10)
         
@@ -142,6 +150,9 @@ class ArucoNode(rclpy.node.Node):
 
         self.bridge = CvBridge()
 
+    def yolo_sub(self, msg: Detection2D):   
+        if msg.id == "cont_blue" or msg.id == "cont_red": self.detection = msg
+    
     def info_callback(self, info_msg):
         self.info_msg = info_msg
         # get the intrinsic matrix and distortion coefficients from the camera info
@@ -184,7 +195,7 @@ class ArucoNode(rclpy.node.Node):
         """
         
         # call the pose estimation function
-        frame, markers = pose_estimation(rgb_frame=cv_image, depth_frame=None,
+        frame, markers, corners = pose_estimation(rgb_frame=cv_image, depth_frame=None,
                                          aruco_detector=self.aruco_detector,
                                          marker_size=self.marker_size, matrix_coefficients=self.intrinsic_mat,
                                          distortion_coefficients=self.distortion, markers=markers)
@@ -192,8 +203,8 @@ class ArucoNode(rclpy.node.Node):
         msg = Atworkobjectsarray()
         
         # if some markers are detected
-        if len(markers.marker_ids) > 0:
-            for i in range(len(markers.marker_ids) - 1):
+        if len(markers.marker_ids) > 0: 
+            for i in range(len(markers.marker_ids)):
                 #Publish ATTC
                 aruco = Atworkobjects()
                 
@@ -201,13 +212,35 @@ class ArucoNode(rclpy.node.Node):
                 if i <= len(markers.colors) - 1:
                     aruco.color = markers.colors[i]
                 else:
+                    #Table tag
+                    self.generateTF("camera_color_frame", "Table Tag ID " + str(markers.marker_ids[i]), markers.poses[i])
+                    self.get_logger().info("Table tag ID " + str(markers.marker_ids[i]))
                     return
+                
+                if is_pixel_in_polygon((corners[i][0][0][0], corners[i][0][0][1]), np.array([(self.detection.bbox.center.position.x - self.detection.bbox.size_x, self.detection.bbox.center.position.y - self.detection.bbox.size_y),
+                                                                                             (self.detection.bbox.center.position.x + self.detection.bbox.size_x, self.detection.bbox.center.position.y - self.detection.bbox.size_y),
+                                                                                             (self.detection.bbox.center.position.x + self.detection.bbox.size_x, self.detection.bbox.center.position.y + self.detection.bbox.size_y),
+                                                                                             (self.detection.bbox.center.position.x - self.detection.bbox.size_x, self.detection.bbox.center.position.y + self.detection.bbox.size_y)])):
+                    self.get_logger().info("wtf was that")
+                    self.get_logger().info("Container tag ID " + str(markers.marker_ids[i]))
+                    self.generateStaticTF("camera_color_optical_frame", markers.colors[i] + " Container", markers.poses[i])
+                    return
+                
                 
                 aruco.id = markers.marker_ids[i]
                 aruco.name = aruco.color + " ATTC No. " + str(self.i)
+                self.get_logger().info("ATTC tag ID " + str(markers.marker_ids[i]))
                 
                 pos = ObjectHypothesisWithPose()
                 pos.pose.pose = markers.poses[i]
+
+                #Rviz and openCV use different axis orientations
+                x = pos.pose.pose.position.x
+                y = pos.pose.pose.position.y
+                z = pos.pose.pose.position.z
+                pos.pose.pose.position.x = z
+                pos.pose.pose.position.y = y
+                pos.pose.pose.position.z = x
                 aruco.detection.results.append(pos)
                 
                 msg.objects.append(aruco)
@@ -218,7 +251,7 @@ class ArucoNode(rclpy.node.Node):
                 if aruco.id in self.foundIDs:
                     pass
                 else:
-                    self.saySomeShit("Achei um " + markers.colors[i] + " A T T C", 5.0, 'pt-br')
+                    #self.saySomeShit("Achei um " + markers.colors[i] + " A T T C", 5.0, 'pt-br')
                     self.foundIDs.append(aruco.id)
             
             self.aruco_pub.publish(msg)
@@ -291,6 +324,24 @@ class ArucoNode(rclpy.node.Node):
         transform.transform.rotation.w = pos.orientation.w
         
         self.tf_broadcaster.sendTransform(transform)
+    
+    def generateStaticTF(self, parent_name, child_name, pos: Pose):
+        transform = TransformStamped()
+        
+        transform.header.stamp = self.get_clock().now().to_msg()
+        transform.header.frame_id = parent_name
+        transform.child_frame_id = child_name
+        
+        transform.transform.translation.x = pos.position.x
+        transform.transform.translation.y = pos.position.y
+        transform.transform.translation.z = pos.position.z
+        
+        transform.transform.rotation.x = pos.orientation.x
+        transform.transform.rotation.y = pos.orientation.y
+        transform.transform.rotation.z = pos.orientation.z
+        transform.transform.rotation.w = pos.orientation.w
+        
+        self.static_tf_broadcaster.sendTransform(transform)
     
     def initialize_parameters(self):
         # Declare and read parameters from aruco_params.yaml

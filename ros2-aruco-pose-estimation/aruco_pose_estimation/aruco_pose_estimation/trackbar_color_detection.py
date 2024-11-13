@@ -3,7 +3,7 @@ import cv2
 
 ESC_KEY = 27
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(6)
 
 def setLimitsOfTrackbar():
     hue = {}

@@ -32,7 +32,7 @@ class Camera_subscriber(Node):
     def __init__(self):
         super().__init__('camera_subscriber')
 
-        weights='/home/gabri/at_work/src/yolo_atwork/yolo_atwork/objetos_1.pt'  # model.pt path(s)
+        weights='/home/gabri/at_work/src/yolo_atwork/yolo_atwork/utopia.pt'  # model.pt path(s)
         self.imgsz=640  # inference size (pixels)
         self.conf_thres=0.7  # confidence threshold
         self.iou_thres=0.45  # NMS IOU threshold

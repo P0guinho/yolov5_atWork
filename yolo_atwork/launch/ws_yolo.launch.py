@@ -99,6 +99,16 @@ def generate_launch_description():
         )
     )
     
+    """Node(
+            package='yolo_atwork',
+            executable='ws_recog_yolo',
+        ),
+        
+        Node(
+            package='yolo_atwork',
+            executable='ws_pose_estimate',
+        ),"""
+    
     ld = LaunchDescription([
         marker_size_arg,
         aruco_dictionary_id_arg,
@@ -113,28 +123,18 @@ def generate_launch_description():
         
         Node(
             package='yolo_atwork',
-            executable='ws_recog_yolo',
-        ),
-        
-        Node(
-            package='yolo_atwork',
-            executable='ws_pose_estimate',
-        ),
-        
-        Node(
-            package='yolo_atwork',
             executable='container_detection',
             parameters=[{
-                "marker_size": LaunchConfiguration('marker_size'),
-                "aruco_dictionary_id": LaunchConfiguration('aruco_dictionary_id'),
-                "image_topic": LaunchConfiguration('image_topic'),
-                "use_depth_input": LaunchConfiguration('use_depth_input'),
-                "depth_image_topic": LaunchConfiguration('depth_image_topic'),
-                "camera_info_topic": LaunchConfiguration('camera_info_topic'),
-                "camera_frame": LaunchConfiguration('camera_frame'),
-                "detected_markers_topic": LaunchConfiguration('detected_markers_topic'),
-                "markers_visualization_topic": LaunchConfiguration('markers_visualization_topic'),
-                "output_image_topic": LaunchConfiguration('output_image_topic'),
+                "marker_size": 0.05,
+                "aruco_dictionary_id": "DICT_5X5_50",
+                "image_topic": "/camera/camera/color/image_raw",
+                "use_depth_input": False,
+                "depth_image_topic": "/camera/camera/aligned_depth_to_color/image_raw",
+                "camera_info_topic": "/camera/camera/color/camera_info",
+                "camera_frame": "camera_color_optical_frame",
+                "detected_markers_topic": "/aruco/markers",
+                "markers_visualization_topic": "/aruco/poses",
+                "output_image_topic": "/aruco/image",
             }],
             output='screen',
             emulate_tty=True

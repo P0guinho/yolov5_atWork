@@ -13,7 +13,7 @@ import yaml
 
 includeRobotURDF: bool = False
 includeWSdetection: bool = False
-includeObjDetection: bool = False
+includeObjDetection: bool = True
 includeATTCdetection: bool = True
 includeTTS: bool = True
 

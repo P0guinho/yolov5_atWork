@@ -203,7 +203,7 @@ class ArucoNode(rclpy.node.Node):
                 if markers.colors[i] in self.foundColors:
                     pass
                 else:
-                    self.saySomeShit("Achei um " + markers.colors[i] + " Container", 5.0, 'pt-br')
+                    #self.saySomeShit("Achei um " + markers.colors[i] + " Container", 5.0, 'pt-br')
                     self.foundColors.append(markers.colors[i])
 
 

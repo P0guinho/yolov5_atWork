@@ -19,6 +19,11 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+install(
+  DIRECTORY msg srv
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Fourpoints.msg"
   "msg/Sphere.msg"
