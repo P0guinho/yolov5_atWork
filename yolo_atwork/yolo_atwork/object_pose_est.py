@@ -248,8 +248,10 @@ class PoseEstimator(Node):
                 else:
                     msg.id += "Cinza"
 
-                #VIVA O CADAMURO!!!!!!!!!!!!!
-                msg.id += "Menor"
+                if difference >= 0.035:
+                    msg.id += "Maior"
+                else:
+                    msg.id += "Menor"
                 
             self.generateTF("camera_depth_frame", msg.id, pos)
             #self.get_logger().info("x: " + str(pos.position.x) + ", y: " + str(pos.position.y) + ", z: " + str(pos.position.z))
